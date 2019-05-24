@@ -64,13 +64,12 @@ public class SubGraphTraverser extends HugeTraverser {
         checkLimit(limit);
 
         Id labelId = this.getEdgeLabelId(label);
-        Traverser traverser = new Traverser(sourceV, labelId, degree,
+        Traverser traverser = new Traverser(sourceV, labelId, depth, degree,
                                             capacity, limit, rings);
         List<Path> paths = new ArrayList<>();
         while (true) {
             paths.addAll(traverser.forward(dir));
-            boolean reachDepth = rings ? --depth <= 0 : depth-- <= 0;
-            if (reachDepth || traverser.reachLimit() ||
+            if (--depth <= 0 || traverser.reachLimit() ||
                 traverser.finished()) {
                 break;
             }
@@ -84,17 +83,19 @@ public class SubGraphTraverser extends HugeTraverser {
         private Set<Id> accessedVertices = newSet();
 
         private final Id label;
+        private int depth;
         private final long degree;
         private final long capacity;
         private final long limit;
         private final boolean rings;
         private long pathCount;
 
-        public Traverser(Id sourceV, Id label, long degree,
+        public Traverser(Id sourceV, Id label, int depth, long degree,
                          long capacity, long limit, boolean rings) {
             this.sources.add(sourceV, new Node(sourceV));
             this.accessedVertices.add(sourceV);
             this.label = label;
+            this.depth = depth;
             this.degree = degree;
             this.capacity = capacity;
             this.limit = limit;
@@ -154,6 +155,14 @@ public class SubGraphTraverser extends HugeTraverser {
             }
             // Re-init sources
             this.sources = newVertices;
+
+            if (!rings && --this.depth <= 0) {
+                for (List<Node> list : this.sources.values()) {
+                    for (Node n : list) {
+                        paths.add(new Path(null, n.path()));
+                    }
+                }
+            }
 
             return paths;
         }
